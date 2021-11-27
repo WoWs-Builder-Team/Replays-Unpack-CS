@@ -3,7 +3,7 @@ using System.IO;
 
 namespace ReplaysUnpackCS.Data
 {
-    public class NetworkPacket
+    internal class NetworkPacket
     {
         public NetworkPacket(Stream stream)
         {

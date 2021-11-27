@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using Razorvine.Pickle;
 using ReplaysUnpackCS.Data;
 
 namespace ReplaysUnpackCS.Processing
@@ -31,7 +32,7 @@ namespace ReplaysUnpackCS.Processing
             }
         }
 
-        public static void ReadReplay(FileStream replayFile)
+        public static IEnumerable<IReplayData> ReadReplay(FileStream replayFile)
         {
             byte[] bReplaySignature = new byte[4];
             byte[] bReplayBlockCount = new byte[4];
@@ -92,152 +93,105 @@ namespace ReplaysUnpackCS.Processing
                 {
                     var em = new EntityMethod(np.RawData);
 
-                    // Console.WriteLine("{0}: {1}: {2}\n", em.entityId, em.messageId, em.data.Value.Length);
-                    if (em.MessageId == 124) // 10.10=124
+                    switch (em.MessageId)
                     {
-                        // Console.WriteLine("{0}: {1}\n", em.entityId, em.messageId);
-
-                        //var unk1 = new byte[8]; //?
-                        //em.data.Value.Read(unk1);
-
-                        var arenaID = new byte[8];
-                        em.Data.Value.Read(arenaID);
-
-                        var teamBuildTypeID = new byte[1];
-                        em.Data.Value.Read(teamBuildTypeID);
-
-                        var blobPreBattlesInfoSize = new byte[1];
-                        em.Data.Value.Read(blobPreBattlesInfoSize);
-                        var blobPreBattlesInfo = new byte[blobPreBattlesInfoSize[0]];
-                        em.Data.Value.Read(blobPreBattlesInfo);
-
-                        var blobPlayersStatesSize = new byte[1];
-                        em.Data.Value.Read(blobPlayersStatesSize);
-
-                        if (blobPlayersStatesSize[0] == 255)
+                        // Console.WriteLine("{0}: {1}: {2}\n", em.entityId, em.messageId, em.data.Value.Length);
+                        // 10.10=124
+                        case (int)ReplayProperty.PlayerData:
                         {
-                            var blobPlayerStatesRealSize = new byte[2];
-                            em.Data.Value.Read(blobPlayerStatesRealSize);
-                            var playerStatesRealSize = BitConverter.ToUInt16(blobPlayerStatesRealSize);
-                            em.Data.Value.Read(new byte[1]); //?
+                            // Console.WriteLine("{0}: {1}\n", em.entityId, em.messageId);
 
-                            // blobPlayerStates will contain players' information like account id, server realm, etc...
-                            // but it is serialized via Python's pickle.
-                            // We use Razorvine's Pickle Unpickler for that.
+                            //var unk1 = new byte[8]; //?
+                            //em.data.Value.Read(unk1);
 
-                            var blobPlayerStates = new byte[playerStatesRealSize];
-                            em.Data.Value.Read(blobPlayerStates);
+                            var arenaID = new byte[8];
+                            em.Data.Value.Read(arenaID);
 
-                            Razorvine.Pickle.Unpickler.registerConstructor("CamouflageInfo", "CamouflageInfo",
-                                new CamouflageInfo());
-                            var k = new Razorvine.Pickle.Unpickler();
-                            
-                            var players = (ArrayList)k.load(new MemoryStream(blobPlayerStates));
-                            var playerData = new List<Dictionary<Constants.PropertyMapper, object>>();
+                            var teamBuildTypeID = new byte[1];
+                            em.Data.Value.Read(teamBuildTypeID);
 
-                            foreach (ArrayList player in players)
+                            var blobPreBattlesInfoSize = new byte[1];
+                            em.Data.Value.Read(blobPreBattlesInfoSize);
+                            var blobPreBattlesInfo = new byte[blobPreBattlesInfoSize[0]];
+                            em.Data.Value.Read(blobPreBattlesInfo);
+
+                            var blobPlayersStatesSize = new byte[1];
+                            em.Data.Value.Read(blobPlayersStatesSize);
+
+                            if (blobPlayersStatesSize[0] == 255)
                             {
-                                var playerDictionary = new Dictionary<Constants.PropertyMapper, object>();
-                                foreach (object[] properties in player)
+                                var blobPlayerStatesRealSize = new byte[2];
+                                em.Data.Value.Read(blobPlayerStatesRealSize);
+                                var playerStatesRealSize = BitConverter.ToUInt16(blobPlayerStatesRealSize);
+                                em.Data.Value.Read(new byte[1]); //?
+
+                                // blobPlayerStates will contain players' information like account id, server realm, etc...
+                                // but it is serialized via Python's pickle.
+                                // We use Razorvine's Pickle Unpickler for that.
+
+                                var blobPlayerStates = new byte[playerStatesRealSize];
+                                em.Data.Value.Read(blobPlayerStates);
+
+                                Unpickler.registerConstructor("CamouflageInfo", "CamouflageInfo", new CamouflageInfo());
+                                var k = new Unpickler();
+
+                                var players = (ArrayList)k.load(new MemoryStream(blobPlayerStates));
+
+                                var dataList = new List<PlayerData>();
+                                foreach (ArrayList player in players)
                                 {
-                                    var intProperty = (int)properties[0];
-                                    if (!Enum.IsDefined(typeof(Constants.PropertyMapper), intProperty))
+                                    var playerDictionary = new Dictionary<PlayerProperty, object>();
+                                    foreach (object[] properties in player)
                                     {
-                                        continue;
+                                        var intProperty = (int)properties[0];
+                                        if (!Enum.IsDefined(typeof(PlayerProperty), intProperty))
+                                        {
+                                            continue;
+                                        }
+
+                                        playerDictionary[(PlayerProperty)properties[0]] = properties[1];
+
+                                        // Console.WriteLine("{0}: {1}", Constants.PropertyMapping[(int)properties[0]].PadRight(21, ' '), properties[1]);
                                     }
-                                    
-                                    
-                                    playerDictionary[(Constants.PropertyMapper)properties[0]] = properties[1];
 
-                                    // Console.WriteLine("{0}: {1}", Constants.PropertyMapping[(int)properties[0]].PadRight(21, ' '), properties[1]);
+                                    dataList.Add(new PlayerData(playerDictionary));
                                 }
-                                
-                                playerData.Add(playerDictionary);
+
+                                yield return new PlayerDataList(dataList);
                             }
-                            /*
-                                ...
-                                accountDBID          : 2016494874
-                                avatarId             : 919187
-                                camouflageInfo       : 4205768624, 0
-                                clanColor            : 13427940
-                                clanID               : 2000008825
-                                clanTag              : TF44
-                                crewParams           : System.Collections.ArrayList
-                                dogTag               : System.Collections.ArrayList
-                                fragsCount           : 0
-                                friendlyFireEnabled  : False
-                                id                   : 537149649
-                                invitationsEnabled   : True
-                                isAbuser             : False
-                                isAlive              : True
-                                isBot                : False
-                                isClientLoaded       : False
-                                isConnected          : True
-                                isHidden             : False
-                                isLeaver             : False
-                                isPreBattleOwner     : False
-                                killedBuildingsCount : 0
-                                maxHealth            : 27500
-                                name                 : notyourfather
-                                playerMode           : Razorvine.Pickle.Objects.ClassDict
-                                preBattleIdOnStart   : 537256655
-                                preBattleSign        : 0
-                                prebattleId          : 537256655
-                                realm                : ASIA
-                                shipComponents       : System.Collections.Hashtable
-                                shipId               : 919188
-                                shipParamsId         : 4288591856
-                                skinId               : 4288591856
-                                teamId               : 0
-                                ttkStatus            : False
-                                ...
-                             */
+
+                            break;
                         }
-                    }
-                    else if (em.MessageId == 122) // 10.10=122,
-                    {
-                        var bEntityId = new byte[4];
-                        em.Data.Value.Read(bEntityId);
-                        var entityId = BitConverter.ToUInt32(bEntityId);
 
-                        var bMessageGroupSize = new byte[1];
-                        em.Data.Value.Read(bMessageGroupSize);
-                        var bMessageGroup = new byte[bMessageGroupSize[0]];
-                        em.Data.Value.Read(bMessageGroup);
-                        var messageGroup = Encoding.UTF8.GetString(bMessageGroup);
+                        // 10.10=122,
+                        case (int)ReplayProperty.ChatMessage:
+                        {
+                            var bEntityId = new byte[4];
+                            em.Data.Value.Read(bEntityId);
+                            var entityId = BitConverter.ToUInt32(bEntityId);
 
-                        var bMessageContentSize = new byte[1];
-                        em.Data.Value.Read(bMessageContentSize);
-                        var bMessageContent = new byte[bMessageContentSize[0]];
-                        em.Data.Value.Read(bMessageContent);
-                        var messageContent = Encoding.UTF8.GetString(bMessageContent);
+                            var bMessageGroupSize = new byte[1];
+                            em.Data.Value.Read(bMessageGroupSize);
+                            var bMessageGroup = new byte[bMessageGroupSize[0]];
+                            em.Data.Value.Read(bMessageGroup);
+                            var messageGroup = Encoding.UTF8.GetString(bMessageGroup);
 
-                        Console.WriteLine("{0} : {1} : {2}", entityId, messageGroup, messageContent);
-                        /*
-                            615476 : battle_team : cv run
-                            615474 : battle_common : nb
-                            615488 : battle_team : lol
-                            615452 : battle_team : lol
-                            615480 : battle_team : ???????bug?
-                            615480 : battle_team : ?????????
-                            615480 : battle_team : ??
-                            615474 : battle_common : ??????
-                            615452 : battle_team : ???????
-                            615480 : battle_team : ???
-                            615480 : battle_team : ??
-                            615480 : battle_team : ????`
-                            615480 : battle_team : ?TM???
-                            615452 : battle_team : ??
-                            615480 : battle_team : ????????
-                            615480 : battle_team : ????????
-                            615480 : battle_team : ??
-                            615452 : battle_team : ? ???????
-                         */
+                            var bMessageContentSize = new byte[1];
+                            em.Data.Value.Read(bMessageContentSize);
+                            var bMessageContent = new byte[bMessageContentSize[0]];
+                            em.Data.Value.Read(bMessageContent);
+                            var messageContent = Encoding.UTF8.GetString(bMessageContent);
+
+                            if (!string.IsNullOrWhiteSpace(messageContent))
+                            {
+                                yield return new ChatMessage(entityId, messageGroup, messageContent);
+                            }
+
+                            break;
+                        }
                     }
                 }
             }
-            
-            // yield break;
         }
     }
 }

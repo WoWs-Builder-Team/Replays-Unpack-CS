@@ -1,8 +1,8 @@
 ﻿using Razorvine.Pickle;
 
-namespace ReplaysUnpackCS
+namespace ReplaysUnpackCS.Processing
 {
-    class CamouflageInfo : IObjectConstructor
+    internal class CamouflageInfo : IObjectConstructor
     {
         public object construct(object[] args)
         {

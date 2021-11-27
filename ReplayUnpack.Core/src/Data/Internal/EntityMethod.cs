@@ -3,7 +3,7 @@ using System.IO;
 
 namespace ReplaysUnpackCS.Data
 {
-    public class EntityMethod
+    internal class EntityMethod
     {
         public EntityMethod(Stream stream)
         {

@@ -3,7 +3,7 @@ using System.IO;
 
 namespace ReplaysUnpackCS.Data
 {
-    public class BinaryStream
+    internal class BinaryStream
     {
         public BinaryStream(Stream memoryStream)
         {
