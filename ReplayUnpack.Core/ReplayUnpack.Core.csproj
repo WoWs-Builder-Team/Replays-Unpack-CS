@@ -8,8 +8,10 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Title>WoWsReplayUnpack</Title>
     <Authors>WoWs-Builder-Team</Authors>
-    <RepositoryType>github</RepositoryType>
     <PackageId>WoWsReplayUnpack</PackageId>
+    <RepositoryUrl>https://github.com/WoWs-Builder-Team/Replays-Unpack-CS</RepositoryUrl>
+    <PackageVersion>1.0.0</PackageVersion>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <ItemGroup>
