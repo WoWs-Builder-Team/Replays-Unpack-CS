@@ -131,17 +131,28 @@ namespace ReplaysUnpackCS.Processing
                             Razorvine.Pickle.Unpickler.registerConstructor("CamouflageInfo", "CamouflageInfo",
                                 new CamouflageInfo());
                             var k = new Razorvine.Pickle.Unpickler();
-
-                            ArrayList players = (ArrayList)k.load(new MemoryStream(blobPlayerStates));
+                            
+                            var players = (ArrayList)k.load(new MemoryStream(blobPlayerStates));
+                            var playerData = new List<Dictionary<Constants.PropertyMapper, object>>();
 
                             foreach (ArrayList player in players)
                             {
+                                var playerDictionary = new Dictionary<Constants.PropertyMapper, object>();
                                 foreach (object[] properties in player)
                                 {
-                                    //Console.WriteLine("{0}: {1}", Constants.PropertyMapping[(int)properties[0]].PadRight(21, ' '), properties[1]);
-                                }
+                                    var intProperty = (int)properties[0];
+                                    if (!Enum.IsDefined(typeof(Constants.PropertyMapper), intProperty))
+                                    {
+                                        continue;
+                                    }
+                                    
+                                    
+                                    playerDictionary[(Constants.PropertyMapper)properties[0]] = properties[1];
 
-                                Console.WriteLine("");
+                                    // Console.WriteLine("{0}: {1}", Constants.PropertyMapping[(int)properties[0]].PadRight(21, ' '), properties[1]);
+                                }
+                                
+                                playerData.Add(playerDictionary);
                             }
                             /*
                                 ...
@@ -225,6 +236,8 @@ namespace ReplaysUnpackCS.Processing
                     }
                 }
             }
+            
+            // yield break;
         }
     }
 }
