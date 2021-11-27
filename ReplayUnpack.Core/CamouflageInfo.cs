@@ -1,11 +1,6 @@
 ﻿using Razorvine.Pickle;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Replays_Unpack_CS
+namespace ReplaysUnpackCS
 {
     class CamouflageInfo : IObjectConstructor
     {
