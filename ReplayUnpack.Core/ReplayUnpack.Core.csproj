@@ -5,6 +5,11 @@
     <TargetFramework>net5.0</TargetFramework>
     <RootNamespace>ReplaysUnpackCS</RootNamespace>
     <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Title>WoWsReplayUnpack</Title>
+    <Authors>WoWs-Builder-Team</Authors>
+    <RepositoryType>github</RepositoryType>
+    <PackageId>WoWsReplayUnpack</PackageId>
   </PropertyGroup>
 
   <ItemGroup>
